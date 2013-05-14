@@ -75,7 +75,7 @@ public class LoadFile
         {
             int i = 0, j = 0;
             if (parent != null) {
-                hkeyComponents[i++] = parent.hkeyComponents[0];
+                hkeyComponents[i++] = parent.hkeyComponents[0]; // treeIndex
                 while (j + 1 < parent.hkeyComponents.length) {
                     String sharedKey = keys.get(j++);
                     int idx = columns.indexOf(sharedKey);
@@ -88,13 +88,13 @@ public class LoadFile
                 hkeyComponents[i++] = - parent.children.size(); // child ordinal
             }
             else {
-                int treeIndex = trees.indexOf(name);
-                if (treeIndex < 0) {
+                int treeIndex = trees.indexOf(name)+1;
+                if (treeIndex <= 0) {
                     throw new IllegalArgumentException("tree not found for root table " + name);
                 }
-                hkeyComponents[0] = - treeIndex;
+                hkeyComponents[i++] = - treeIndex;
             }
-            while (j + 1 < keys.size()) {
+            while (j < keys.size()) {
                 String key = keys.get(j++);
                 int idx = columns.indexOf(key);
                 if (idx < 0) {
@@ -109,8 +109,8 @@ public class LoadFile
         if (indexOptions != null) {
             indexes = new ArrayList<>(indexOptions.size());
             for (String indexName : indexOptions.keySet()) {
-                int treeIndex = trees.indexOf(indexName);
-                if (treeIndex < 0) {
+                int treeIndex = trees.indexOf(indexName)+1;
+                if (treeIndex <= 0) {
                     throw new IllegalArgumentException("tree not found for index " + indexName);
                 }
                 List<String> indexKeys = new ArrayList<>(indexOptions.get(indexName));
