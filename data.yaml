@@ -1,6 +1,6 @@
 
 trees: [ 
-  departments, employees, dept_emp, dept_manager, salaries, titles, 
+  departments, employees,
   employees_name_idx, dept_emp_dept_no, dept_emp_emp_no, dept_manager_dept_no, 
   dept_manager_emp_no, salaries_emp_no, salaries_sal_idx, titles_emp_no
 ]
@@ -10,28 +10,51 @@ files:
     file: 'data/departments.csv'
     columns: [ dept_no,dept_name ]
     types: [ string,string ]
-
+    keys: [ dept_no ]
+      
   employees:
     file: 'data/employees.csv'
     columns: [ emp_no,first_name,last_name,gender,birth_date,hire_date ]
     types: [ integer,string,string,string,date,date ]
+    keys: [ emp_no ]
+    indexes:
+      employees_name_idx: [ last_name ]
 
   dept_emp:
     file: 'data/dept_emp.csv'
     columns: [ emp_no,dept_no,from_date,to_date ]
-    types: [ integer,integer,date,date ]
+    types: [ integer,string,date,date ]
+    parent: employees
+    keys: [ emp_no, dept_no ]
+    indexes:
+      dept_emp_dept_no: [ dept_no ]
+      dept_emp_emp_no: [ emp_no ]
 
   dept_manager:
     file: 'data/dept_manager.csv'
     columns: [ emp_no,dept_no,from_date,to_date ]
-    types: [ integer,integer,date,date ]
-
+    types: [ integer,string,date,date ]
+    parent: employees
+    keys: [ emp_no, dept_no ]
+    indexes:
+      dept_manager_dept_no: [ dept_no ]
+      dept_manager_emp_no: [ emp_no ]
+      
   salaries:
     file: 'data/salaries.csv'
     columns: [ emp_no,from_date,to_date,salary ]
     types: [ integer,date,date,integer ]
+    parent: employees
+    keys: [ emp_no, from_date ]
+    indexes:
+      salaries_emp_no: [ emp_no ]
+      salaries_sal_idx: [ salary ]
 
   titles:
     file: 'data/titles.csv'
     columns: [ emp_no,title,from_date,to_date ]
     types: [ integer,string,date,date ]
+    parent: employees
+    keys: [ emp_no, title, from_date ]
+    indexes:
+      titles_emp_no: [ emp_no ]

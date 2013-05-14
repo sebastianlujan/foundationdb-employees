@@ -1,0 +1,44 @@
+<project name="MyProject" default="dist" basedir=".">
+  <property name="src" location="src"/>
+  <property name="build" location="build"/>
+  <property name="dist"  location="dist"/>
+
+  <target name="init">
+    <tstamp/>
+    <mkdir dir="${build}"/>
+  </target>
+
+  <target name="compile" depends="init" description="compile sources" >
+    <javac srcdir="${src}" destdir="${build}" includeantruntime="false" debug="true">
+      <compilerarg value="-Xlint:unchecked"/>
+      <classpath>
+        <fileset dir="lib">
+          <include name="**/*.jar"/>
+        </fileset>
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="dist" depends="compile" description="generate the executable jar" >
+    <mkdir dir="${dist}/lib"/>
+    <jar jarfile="${dist}/lib/fdb-emp.jar" basedir="${build}"/>
+  </target>
+
+  <target name="load" depends="dist" description="load into database" >
+    <java classname="com.akiban.fdbemp.Loader">
+      <classpath>
+        <fileset dir="lib">
+          <include name="**/*.jar"/>
+        </fileset>        
+        <fileset dir="dist">
+          <include name="**/*.jar"/>
+        </fileset>        
+      </classpath>
+    </java>
+  </target>
+
+  <target name="clean" description="clean generated files" >
+    <delete dir="${build}"/>
+    <delete dir="${dist}"/>
+  </target>
+</project>
