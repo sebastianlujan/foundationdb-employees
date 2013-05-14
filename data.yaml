@@ -58,3 +58,9 @@ files:
     keys: [ emp_no, title, from_date ]
     indexes:
       titles_emp_no: [ emp_no ]
+
+queries:
+  emp_100k:
+    operator: IndexScan
+    index: salaries_sal_idx
+    ge: 100000
