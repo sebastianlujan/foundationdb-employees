@@ -53,11 +53,14 @@ public class Loader
     }
 
     static final byte[] EMPTY = new byte[0];
+    static final int COMMIT_COUNT = 100000;
 
     protected void load(LoadFile loadFile, Transaction tr) throws IOException {
+        System.out.println("Loading " + loadFile.getName());
         try (FileReader r = new FileReader(loadFile.getFile())) {
             BufferedReader br = new BufferedReader(r);
             br.readLine();      // Header row.
+            int pending = 0;
             while (true) {
                 String line = br.readLine();
                 if (line == null) break;
@@ -65,9 +68,15 @@ public class Loader
                 Tuple hkey = Tuple.from(loadFile.hkey(row));
                 Tuple value = Tuple.from(row);
                 tr.set(hkey.pack(), value.pack());
+                pending++;
                 for (LoadFile.Index index : loadFile.getIndexes()) {
                     Tuple key = Tuple.from(index.build(row));
                     tr.set(key.pack(), EMPTY);
+                    pending++;
+                }
+                if (pending > COMMIT_COUNT) {
+                    tr.commit().get();
+                    pending = 0;
                 }
             }
         }

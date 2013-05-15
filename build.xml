@@ -36,7 +36,8 @@
   </path>
 
   <target name="load" depends="dist" description="load into database" >
-    <java classname="com.akiban.fdbemp.Loader">
+    <java classname="com.akiban.fdbemp.Loader"
+          fork="yes" failonerror="yes">
       <classpath>
         <path refid="running.class.path"/>
       </classpath>
@@ -45,7 +46,8 @@
 
   <target name="query" depends="dist" description="run a query" >
     <property name="QUERY" value="emp_100k"/>
-    <java classname="com.akiban.fdbemp.Querier">
+    <java classname="com.akiban.fdbemp.Querier"
+          fork="yes" failonerror="yes">
       <classpath>
         <path refid="running.class.path"/>
       </classpath>
