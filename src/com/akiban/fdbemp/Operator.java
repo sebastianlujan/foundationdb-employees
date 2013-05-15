@@ -6,6 +6,17 @@ import com.foundationdb.tuple.Tuple;
 
 public abstract class Operator
 {
-    public abstract void open(Transaction tr) throws Exception;
+    protected Transaction transaction;
+    protected Operator input;
+
+    protected Operator(Operator input) {
+        this.input = input;
+    }
+
+    public void open(Transaction tr) throws Exception {
+        transaction = tr;
+        input.open(tr);
+    }
+
     public abstract Tuple next();
 }

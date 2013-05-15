@@ -5,9 +5,7 @@ import com.foundationdb.Transaction;
 import com.foundationdb.KeyValue;
 import com.foundationdb.tuple.ArrayUtil;
 import com.foundationdb.tuple.Tuple;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class IndexScanOperator extends Operator
 {
@@ -16,6 +14,9 @@ public class IndexScanOperator extends Operator
 
     public IndexScanOperator(Map<String,String> options, Operator input, 
                              List<String> trees) {
+        super(input);
+        assert(input == null);
+
         String indexName = options.get("index");
         int treeIndex = trees.indexOf(indexName)+1;
         if (treeIndex <= 0) {

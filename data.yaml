@@ -61,6 +61,10 @@ files:
 
 queries:
   emp_100k:
-    operator: IndexScan
-    index: salaries_sal_idx
-    ge: 100000
+    input:
+      operator: IndexScan
+      index: salaries_sal_idx
+      ge: 100000
+    operator: AncestorLookup
+    group: employees
+    ancestors: [[2,1],[2,1,3,1]]
