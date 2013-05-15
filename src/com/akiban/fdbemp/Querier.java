@@ -13,10 +13,15 @@ import java.io.*;
 
 public class Querier implements Retryable
 {
-    Operator operator;
+    private Operator operator;
+    private boolean output;
 
     public static void main(String[] args) throws Throwable {
-        new Querier("data.yaml", args[0]).run();
+        int repeat = 0;
+        if (args.length > 1) {
+            repeat = Integer.parseInt(args[1]);
+        }
+        new Querier("data.yaml", args[0]).run(repeat);
     }
 
     @SuppressWarnings("unchecked")
@@ -31,12 +36,23 @@ public class Querier implements Retryable
         operator = parseOperator(queries.get(query), trees);
     }
 
-    public void run() throws Throwable {
+    public void run(int repeat) throws Throwable {
         FDB fdb = FDB.selectAPIVersion(21);
         Database db = fdb.open().get();
 
+        output = true;
         db.run(this);
         
+        if (repeat > 0) {
+            output = false;
+            long startTime = System.currentTimeMillis();
+            for (int i = 0; i < repeat; i++) {
+                db.run(this);
+            }
+            long endTime = System.currentTimeMillis();
+            System.out.println((double)(endTime - startTime) / repeat + " ms.");
+        }
+
         fdb.dispose();
     }
 
@@ -46,7 +62,9 @@ public class Querier implements Retryable
         while (true) {
             Tuple row = operator.next();
             if (row == null) break;
-            System.out.println(row.getItems());
+            if (output) {
+                System.out.println(row.getItems());
+            }
         }
     }
 

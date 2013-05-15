@@ -46,12 +46,14 @@
 
   <target name="query" depends="dist" description="run a query" >
     <property name="QUERY" value="emp_100k"/>
+    <property name="REPEAT" value="1000"/>
     <java classname="com.akiban.fdbemp.Querier"
           fork="yes" failonerror="yes">
       <classpath>
         <path refid="running.class.path"/>
       </classpath>
       <arg value="${QUERY}"/>
+      <arg value="${REPEAT}"/>
     </java>
   </target>
 
