@@ -4,6 +4,7 @@ package com.akiban.fdbemp;
 import org.yaml.snakeyaml.Yaml;
 import com.foundationdb.Database;
 import com.foundationdb.FDB;
+import com.foundationdb.Retryable;
 import com.foundationdb.Transaction;
 import com.foundationdb.tuple.Tuple;
 import java.util.*;
@@ -13,7 +14,7 @@ public class Loader
 {
     private List<LoadFile> loadFiles;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Throwable {
         new Loader("data.yaml").load();
     }
 
@@ -36,17 +37,19 @@ public class Loader
         }
     }
 
-    public void load() throws Exception {
+    public void load() throws Throwable {
         FDB fdb = FDB.selectAPIVersion(21);
         Database db = fdb.open().get();
-        Transaction tr = db.createTransaction();
 
-        tr.clear(EMPTY, new byte[] { (byte)0xFF });
-        tr.commit().get();
+        db.run(new Retryable() {
+                @Override
+                public void attempt(Transaction tr) throws Exception {
+                    tr.clear(EMPTY, new byte[] { (byte)0xFF });
+                }
+            });
 
         for (LoadFile loadFile : loadFiles) {
-            load(loadFile, tr);
-            tr.commit().get();
+            load(loadFile, db);
         }
         
         fdb.dispose();
@@ -55,29 +58,42 @@ public class Loader
     static final byte[] EMPTY = new byte[0];
     static final int COMMIT_COUNT = 100000;
 
-    protected void load(LoadFile loadFile, Transaction tr) throws IOException {
+    protected void load(LoadFile loadFile, Database db) throws Throwable {
         System.out.println("Loading " + loadFile.getName());
         try (FileReader r = new FileReader(loadFile.getFile())) {
             BufferedReader br = new BufferedReader(r);
             br.readLine();      // Header row.
-            int pending = 0;
+            final byte[][] pending = new byte[(COMMIT_COUNT+100)*2][];
+            int count = 0;
             while (true) {
                 String line = br.readLine();
+                if (line != null) {
+                    Object[] row = loadFile.parseRow(line);
+                    Tuple hkey = Tuple.from(loadFile.hkey(row));
+                    Tuple value = Tuple.from(row);
+                    pending[count*2] = hkey.pack();
+                    pending[count*2+1] = value.pack();
+                    count++;
+                    for (LoadFile.Index index : loadFile.getIndexes()) {
+                        Tuple key = Tuple.from(index.build(row));
+                        pending[count*2] = key.pack();
+                        pending[count*2+1] = EMPTY;
+                        count++;
+                    }
+                }
+                if ((line == null) || (count > COMMIT_COUNT)) {
+                    final int todo = count*2;
+                    db.run(new Retryable() {
+                            @Override
+                            public void attempt(Transaction tr) throws Exception {
+                                for (int i = 0; i < todo; i+=2) {
+                                    tr.set(pending[i], pending[i+1]);
+                                }
+                            }
+                        });
+                    count = 0;
+                }
                 if (line == null) break;
-                Object[] row = loadFile.parseRow(line);
-                Tuple hkey = Tuple.from(loadFile.hkey(row));
-                Tuple value = Tuple.from(row);
-                tr.set(hkey.pack(), value.pack());
-                pending++;
-                for (LoadFile.Index index : loadFile.getIndexes()) {
-                    Tuple key = Tuple.from(index.build(row));
-                    tr.set(key.pack(), EMPTY);
-                    pending++;
-                }
-                if (pending > COMMIT_COUNT) {
-                    tr.commit().get();
-                    pending = 0;
-                }
             }
         }
     }
