@@ -1,14 +1,16 @@
 
 package com.akiban.fdbemp;
 
+import com.foundationdb.AsyncFuture;
+import com.foundationdb.Transaction;
 import com.foundationdb.tuple.Tuple;
 import java.util.*;
 
 public class AncestorLookupOperator extends Operator
 {
     private int[][] ancestors;
-    private Tuple inputTuple;
-    private int inputIndex;
+    private AsyncFuture<byte[]>[] futures;
+    private int futureIndex;
 
     @SuppressWarnings("unchecked")
     public AncestorLookupOperator(Map<String,Object> options, Operator input, 
@@ -32,39 +34,46 @@ public class AncestorLookupOperator extends Operator
             }
             ancestors[i] = ancestor;
         }
+        futures = (AsyncFuture<byte[]>[])new AsyncFuture[ancestors.length];
     }
 
     @Override
+    public void open(Transaction tr) throws Exception {
+        super.open(tr);
+        futureIndex = futures.length;
+    }
+    
+    @Override
     public Tuple next() {
         while (true) {
-            if (inputTuple == null) {
-                inputTuple = input.next();
-                if (inputTuple == null) {
-                    return null;
+            if (futureIndex < futures.length) {
+                byte[] row = futures[futureIndex++].get();
+                if (row != null) {
+                    return Tuple.fromBytes(row);
                 }
-                inputIndex = 0;
             }
-            while (inputIndex < ancestors.length) {
-                int[] ancestor = ancestors[inputIndex++];
+            Tuple inputTuple = input.next();
+            if (inputTuple == null) {
+                return null;
+            }
+            for (int i = 0; i < ancestors.length; i++) {
+                int[] ancestor = ancestors[i];
                 Iterator<Object> items = inputTuple.iterator();
                 int n = ancestor[0];
                 while (n-- > 0) {
                     items.next();
                 }
                 List<Object> hkey = new ArrayList<>();
-                for (int i = 1; i < ancestor.length; i+=2) {
-                    hkey.add(ancestor[i]); // Tree index or Path ordinal
-                    n = ancestor[i+1];
+                for (int j = 1; j < ancestor.length; j+=2) {
+                    hkey.add(ancestor[j]); // Tree index or Path ordinal
+                    n = ancestor[j+1];
                     while (n-- > 0) {
                         hkey.add(items.next());
                     }
                 }
-                byte[] row = transaction.get(Tuple.fromList(hkey).pack()).get();
-                if (row != null) {
-                    return Tuple.fromBytes(row);
-                }
+                futures[i] = transaction.get(Tuple.fromList(hkey).pack());
             }
-            inputTuple = null;
+            futureIndex = 0;
         }
     }
 }
