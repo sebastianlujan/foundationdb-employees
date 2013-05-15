@@ -7,6 +7,7 @@ import com.foundationdb.FDB;
 import com.foundationdb.Retryable;
 import com.foundationdb.Transaction;
 import com.foundationdb.tuple.Tuple;
+import java.lang.reflect.Constructor;
 import java.util.*;
 import java.io.*;
 
@@ -14,23 +15,23 @@ public class Querier implements Retryable
 {
     Operator operator;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Throwable {
         new Querier("data.yaml", args[0]).run();
     }
 
     @SuppressWarnings("unchecked")
-    public Querier(String file, String query) throws IOException {
+    public Querier(String file, String query) throws Exception {
         Map<String,Object> data;
         try (InputStream istr = new FileInputStream("data.yaml")) {
             Yaml yaml = new Yaml();
             data = (Map<String,Object>)yaml.load(istr);
         }
         List<String> trees = (List<String>)data.get("trees");
-        Map<String,Map<String,String>> queries = (Map<String,Map<String,String>>)data.get("queries");
-        operator = parseOperator(queries.get(query));
+        Map<String,Map<String,Object>> queries = (Map<String,Map<String,Object>>)data.get("queries");
+        operator = parseOperator(queries.get(query), trees);
     }
 
-    public void run() throws Exception {
+    public void run() throws Throwable {
         FDB fdb = FDB.selectAPIVersion(21);
         Database db = fdb.open().get();
 
@@ -45,14 +46,21 @@ public class Querier implements Retryable
         while (true) {
             Tuple row = operator.next();
             if (row == null) break;
-            System.out.println(row);
+            System.out.println(row.getItems());
         }
     }
 
-    protected Operator parseOperator(Map<String,String> options) throws Exception {
-        Class<Operator> clazz = Class.forName("com.akiban.fdbemp." + options.get("operaator"));
-        Constructor<Operator> ctor = clazz.getConstructor(java.util.Map.class);
-        return ctor.newInstance(options);
+    @SuppressWarnings("unchecked")
+    protected Operator parseOperator(Map<String,Object> options, List<String> trees)
+            throws Exception {
+        Operator input = null;
+        Map<String,Object> inputOptions = (Map<String,Object>)options.get("input");
+        if (inputOptions != null) {
+            input = parseOperator(inputOptions, trees);
+        }
+        Class clazz = Class.forName("com.akiban.fdbemp." + options.get("operator") + "Operator");
+        Constructor ctor = clazz.getConstructor(Map.class, Operator.class, List.class);
+        return (Operator)ctor.newInstance(options, input, trees);
     }
 
 }

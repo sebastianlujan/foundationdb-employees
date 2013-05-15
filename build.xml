@@ -8,13 +8,17 @@
     <mkdir dir="${build}"/>
   </target>
 
+  <path id="compiler.class.path">
+    <fileset dir="lib">
+      <include name="**/*.jar"/>
+    </fileset>        
+  </path>
+
   <target name="compile" depends="init" description="compile sources" >
     <javac srcdir="${src}" destdir="${build}" includeantruntime="false" debug="true">
       <compilerarg value="-Xlint:unchecked"/>
       <classpath>
-        <fileset dir="lib">
-          <include name="**/*.jar"/>
-        </fileset>
+        <path refid="compiler.class.path"/>
       </classpath>
     </javac>
   </target>
@@ -24,16 +28,28 @@
     <jar jarfile="${dist}/lib/fdb-emp.jar" basedir="${build}"/>
   </target>
 
+  <path id="running.class.path">
+    <path refid="compiler.class.path"/>
+    <fileset dir="dist">
+      <include name="**/*.jar"/>
+    </fileset>        
+  </path>
+
   <target name="load" depends="dist" description="load into database" >
     <java classname="com.akiban.fdbemp.Loader">
       <classpath>
-        <fileset dir="lib">
-          <include name="**/*.jar"/>
-        </fileset>        
-        <fileset dir="dist">
-          <include name="**/*.jar"/>
-        </fileset>        
+        <path refid="running.class.path"/>
       </classpath>
+    </java>
+  </target>
+
+  <target name="query" depends="dist" description="run a query" >
+    <property name="QUERY" value="emp_100k"/>
+    <java classname="com.akiban.fdbemp.Querier">
+      <classpath>
+        <path refid="running.class.path"/>
+      </classpath>
+      <arg value="${QUERY}"/>
     </java>
   </target>
 
